@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b1016">
+<title>ARENA PERFECT 001 — Editor</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{
+    width:100%;height:100%;overflow:hidden;background:#0b1016;color:#eaf2ff;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none;
+  }
+  canvas{display:block;width:100%;height:100%}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+  #title{
+    position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:14px;
+    font:800 15px ui-monospace,monospace;letter-spacing:.18em;color:#7fd4ff;
+    text-shadow:0 2px 6px #000;
+  }
+  #title small{display:block;font-size:9px;letter-spacing:.1em;color:#7fa4bd;margin-top:4px;font-weight:600}
+  #stats{
+    position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;
+    background:rgba(8,18,28,.75);border:1px solid rgba(120,190,255,.3);
+    border-radius:10px;padding:8px 12px;font:11px ui-monospace,monospace;
+    color:#9fe6ff;backdrop-filter:blur(6px);text-align:right;line-height:1.5;
+  }
+  #stats b{color:#7fd4ff}
+
+  #panel{
+    position:absolute;left:calc(env(safe-area-inset-left,0px) + 14px);
+    top:calc(env(safe-area-inset-top,0px) + 60px);
+    width:min(240px, calc(100vw - 28px));max-height:calc(100vh - 140px);
+    overflow-y:auto;background:rgba(8,16,26,.82);
+    border:1px solid rgba(120,190,255,.28);border-radius:14px;
+    padding:14px;backdrop-filter:blur(8px);pointer-events:auto;font-size:12px;
+  }
+  #panel h3{font:800 10px ui-monospace,monospace;letter-spacing:.15em;color:#f5c518;margin:12px 0 8px;text-transform:uppercase}
+  #panel h3:first-child{margin-top:0}
+  #panel .row{display:flex;flex-wrap:wrap;gap:6px}
+  #panel button{
+    border:1px solid rgba(120,190,255,.35);background:rgba(20,40,60,.6);
+    color:#cfe8ff;border-radius:8px;padding:7px 11px;font:700 10px system-ui;
+    letter-spacing:.4px;transition:.15s;
+  }
+  #panel button.on{background:rgba(60,150,235,.5);border-color:#6cc4ff;color:#fff}
+  #zoneButtons button{
+    width:100%;text-align:left;display:flex;justify-content:space-between;
+    align-items:center;padding:8px 11px;margin-bottom:5px;
+  }
+  #zoneButtons button .role{font-size:8px;letter-spacing:.1em;opacity:.7}
+
+  #legend{
+    position:absolute;left:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+    background:rgba(8,16,26,.7);border:1px solid rgba(120,190,255,.2);
+    border-radius:10px;padding:9px 12px;font:10px ui-monospace,monospace;
+    color:#a8bed4;line-height:1.6;pointer-events:none;
+  }
+  #legend b{color:#9fe6ff}
+
+  #editorToggle{
+    position:absolute;top:calc(env(safe-area-inset-top,0px) + 78px);right:14px;
+    background:rgba(30,120,90,.92);border:1.5px solid #4dffb8;color:#fff;
+    padding:10px 16px;border-radius:12px;font:800 11px system-ui;
+    letter-spacing:.15em;pointer-events:auto;z-index:30;
+    box-shadow:0 6px 20px rgba(0,255,170,.25);transition:.2s;
+  }
+  #editorToggle.on{background:rgba(20,60,45,.8);border-color:rgba(80,255,180,.4)}
+
+  #editorPanel{
+    position:fixed;right:0;top:0;bottom:0;width:min(340px, 100vw);z-index:35;
+    background:rgba(8,16,26,.96);backdrop-filter:blur(12px);
+    border-left:1px solid rgba(120,190,255,.35);
+    display:flex;flex-direction:column;
+    transform:translateX(100%);transition:transform .28s cubic-bezier(.22,.8,.3,1);
+    pointer-events:auto;
+  }
+  #editorPanel.open{transform:translateX(0)}
+
+  .editor-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 12px;
+    border-bottom:1px solid rgba(120,190,255,.2);
+    font:800 12px ui-monospace,monospace;letter-spacing:.15em;color:#4dffb8;
+  }
+  .editor-header button{
+    width:32px;height:32px;border-radius:8px;
+    background:rgba(255,80,80,.15);border:1px solid rgba(255,100,100,.4);
+    color:#ff9999;font-size:16px;font-weight:700;
+  }
+
+  .editor-tabs{display:flex;overflow-x:auto;gap:2px;padding:8px 10px;border-bottom:1px solid rgba(120,190,255,.15)}
+  .editor-tabs::-webkit-scrollbar{display:none}
+  .editor-tabs button{
+    flex:0 0 auto;padding:8px 12px;border-radius:8px;
+    background:rgba(20,40,60,.5);color:#7fa4bd;font:700 10px system-ui;
+    letter-spacing:.1em;white-space:nowrap;transition:.15s;
+  }
+  .editor-tabs button.active{background:rgba(60,150,235,.4);color:#fff;box-shadow:inset 0 0 0 1px #6cc4ff}
+
+  #editorItems{
+    flex:1;overflow-y:auto;padding:12px;
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start;
+  }
+  .item-btn{
+    background:rgba(20,40,60,.6);border:1px solid rgba(120,190,255,.25);
+    border-radius:10px;padding:10px 8px;color:#cfe8ff;
+    font:700 10px system-ui;letter-spacing:.05em;
+    display:flex;flex-direction:column;gap:3px;
+    align-items:center;text-align:center;transition:.15s;
+    min-height:64px;justify-content:center;
+  }
+  .item-btn:hover{background:rgba(30,60,90,.7)}
+  .item-btn.selected{background:rgba(77,255,184,.25);border-color:#4dffb8;color:#fff;box-shadow:0 0 14px rgba(80,255,180,.35)}
+  .item-btn .icon{font-size:20px;line-height:1;margin-bottom:2px}
+  .item-btn.delete{background:rgba(150,30,40,.35);border-color:rgba(255,110,110,.5);color:#ffcccc}
+  .item-btn.delete.selected{background:rgba(230,60,70,.5);border-color:#ff6b6b;color:#fff}
+  .item-btn.action{background:rgba(60,100,180,.35);border-color:rgba(120,180,255,.4);color:#dcefff}
+
+  #selectedPanel{
+    padding:10px 12px;
+    background:rgba(77,255,184,.08);
+    border-top:1px solid rgba(77,255,184,.35);
+  }
+  #selectedPanel.hidden{display:none}
+  #selectedInfo{
+    font:700 10px ui-monospace,monospace;letter-spacing:.06em;color:#4dffb8;
+    margin-bottom:8px;line-height:1.5;
+  }
+  #selectedInfo b{color:#fff}
+  #selectedInfo .coords{color:#9fe6ff;font-size:9px;opacity:.85}
+  .selected-controls{display:flex;gap:6px}
+  .selected-controls button{
+    flex:1;padding:8px 4px;border-radius:8px;
+    background:rgba(77,255,184,.15);border:1px solid rgba(77,255,184,.4);
+    color:#4dffb8;font:800 9px system-ui;letter-spacing:.05em;transition:.15s;
+  }
+  .selected-controls button:active{background:rgba(77,255,184,.35)}
+  .selected-controls button.danger{
+    background:rgba(255,80,80,.15);border-color:rgba(255,100,100,.5);color:#ff9999;
+  }
+  .selected-controls button.danger:active{background:rgba(255,80,80,.35)}
+
+  .editor-footer{
+    padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 12px);
+    border-top:1px solid rgba(120,190,255,.2);background:rgba(6,12,20,.6);
+  }
+  #brushStatus{
+    font:700 10px ui-monospace,monospace;letter-spacing:.1em;
+    color:#9fe6ff;margin-bottom:8px;text-align:center;
+    padding:6px;border-radius:6px;background:rgba(10,24,38,.5);
+  }
+  #brushStatus.active{color:#4dffb8;background:rgba(20,60,45,.5)}
+  #brushStatus.mover{color:#4dffb8;background:rgba(20,60,45,.5)}
+  .editor-controls{display:flex;gap:6px}
+  .editor-controls button{
+    flex:1;padding:9px 4px;border-radius:8px;
+    background:rgba(20,40,60,.6);border:1px solid rgba(120,190,255,.3);
+    color:#cfe8ff;font:800 10px system-ui;letter-spacing:.05em;transition:.15s;
+  }
+  .editor-controls button:active{background:rgba(60,150,235,.4)}
+  .editor-controls button.mover{background:rgba(77,255,184,.2);border-color:#4dffb8;color:#4dffb8}
+
+  #modal{
+    position:fixed;inset:0;z-index:50;
+    background:rgba(2,6,12,.88);backdrop-filter:blur(8px);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;opacity:0;pointer-events:none;transition:opacity .2s;
+  }
+  #modal.open{opacity:1;pointer-events:auto}
+  .modal-inner{
+    width:100%;max-width:600px;max-height:85vh;
+    background:rgba(10,20,32,.98);border:1px solid rgba(120,190,255,.4);
+    border-radius:16px;display:flex;flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);
+  }
+  .modal-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px;border-bottom:1px solid rgba(120,190,255,.2);
+    font:800 12px ui-monospace,monospace;letter-spacing:.15em;color:#7fd4ff;
+  }
+  .modal-header button{
+    width:30px;height:30px;border-radius:8px;
+    background:rgba(255,80,80,.15);border:1px solid rgba(255,100,100,.4);
+    color:#ff9999;font-size:14px;font-weight:700;
+  }
+  .modal-actions{
+    display:flex;flex-wrap:wrap;gap:8px;padding:12px 18px;
+    border-bottom:1px solid rgba(120,190,255,.15);
+  }
+  .modal-actions button{
+    padding:9px 14px;border-radius:8px;
+    background:rgba(60,150,235,.25);border:1px solid rgba(120,190,255,.45);
+    color:#cfe8ff;font:800 10px system-ui;letter-spacing:.08em;transition:.15s;
+  }
+  .modal-actions button:hover{background:rgba(60,150,235,.45)}
+  .modal-actions button.primary{background:rgba(77,255,184,.2);border-color:#4dffb8;color:#4dffb8}
+  #modalText{
+    flex:1;min-height:200px;max-height:50vh;
+    margin:12px 18px;padding:12px;
+    background:rgba(4,10,18,.8);border:1px solid rgba(120,190,255,.2);
+    border-radius:10px;color:#cfe8ff;
+    font:11px ui-monospace,monospace;line-height:1.5;
+    resize:none;outline:none;
+    -webkit-user-select:text;user-select:text;touch-action:auto;
+  }
+  #modalText:focus{border-color:#6cc4ff}
+  #modalStatus{padding:0 18px 14px;font:11px system-ui;color:#7fa4bd;min-height:18px}
+  #modalStatus.ok{color:#4dffb8}
+  #modalStatus.err{color:#ff8888}
+
+  #toast{
+    position:fixed;left:50%;top:22%;transform:translate(-50%,-50%);z-index:60;
+    background:rgba(10,24,38,.92);border:1px solid rgba(120,190,255,.45);
+    padding:11px 20px;border-radius:12px;font-size:13px;font-weight:700;
+    letter-spacing:1px;pointer-events:none;opacity:0;transition:opacity .3s;
+    text-align:center;max-width:80vw;
+  }
+  #toast.show{opacity:1}
+
+  #hint{
+    position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+    transform:translateX(-50%);font:10px ui-monospace,monospace;
+    color:#a8bed4;background:rgba(8,16,26,.7);
+    border:1px solid rgba(120,190,255,.2);border-radius:10px;
+    padding:8px 14px;white-space:nowrap;pointer-events:none;text-align:center;
+  }
+
+  #loading{
+    position:fixed;inset:0;z-index:99;background:#080f18;display:flex;
+    align-items:center;justify-content:center;flex-direction:column;gap:14px;
+    color:#5fb8ec;font-size:12px;letter-spacing:4px;transition:opacity .5s;
+  }
+  #loading.done{opacity:0;pointer-events:none}
+  .spinner{width:34px;height:34px;border-radius:50%;border:2px solid rgba(95,184,236,.2);
+           border-top-color:#5fb8ec;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media (max-width:700px){
+    #editorPanel{width:100vw}
+    #panel{display:none}
+    #legend{display:none}
+    #hint{display:none}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="app"></canvas>
+
+<div id="hud">
+  <div id="title">ARENA PERFECT 001<small id="titleSub">MODO INSPEÇÃO</small></div>
+  <div id="stats">
+    <div><b id="stProps">0</b> PROPS</div>
+    <div><b id="stZones">0</b> ZONAS</div>
+    <div><b id="stFps">60</b> FPS</div>
+  </div>
+
+  <div id="panel">
+    <h3>VISUALIZAÇÃO</h3>
+    <div class="row">
+      <button id="btnGrid" class="on">GRID</button>
+      <button id="btnZones" class="on">ZONAS</button>
+      <button id="btnLabels" class="on">NOMES</button>
+      <button id="btnTop">SUPERIOR</button>
+      <button id="btnIso">ISO</button>
+    </div>
+    <h3>FOCO RÁPIDO</h3>
+    <div id="zoneButtons"></div>
+  </div>
+
+  <div id="legend">
+    <b>MOUSE/1 DEDO</b> orbitar · <b>2 DEDOS</b> pan · <b>PINÇA</b> zoom<br>
+    <b>WASD</b> mover · <b>Q/E</b> altura · <b>R</b> reset · <b>Esc</b> cancelar
+  </div>
+  <div id="hint">SELECIONE UM ITEM NO EDITOR E TOQUE NA ARENA</div>
+</div>
+
+<button id="editorToggle">✎ EDITOR</button>
+
+<div id="editorPanel">
+  <div class="editor-header">
+    <span>EDITOR DE ARENA</span>
+    <button id="editorClose">✕</button>
+  </div>
+  <div class="editor-tabs" id="editorTabs">
+    <button data-tab="terreno" class="active">TERRENO</button>
+    <button data-tab="estruturas">ESTRUTURAS</button>
+    <button data-tab="cobertura">COBERTURA</button>
+    <button data-tab="natureza">NATUREZA</button>
+    <button data-tab="acoes">AÇÕES</button>
+  </div>
+  <div id="editorItems"></div>
+
+  <div id="selectedPanel" class="hidden">
+    <div id="selectedInfo"></div>
+    <div class="selected-controls">
+      <button id="btnSelRotate">⟳ 45°</button>
+      <button id="btnSelDup">📋 DUPLICAR</button>
+      <button id="btnSelDel" class="danger">🗑 DELETAR</button>
+    </div>
+  </div>
+
+  <div class="editor-footer">
+    <div id="brushStatus">NENHUMA FERRAMENTA</div>
+    <div class="editor-controls">
+      <button id="btnMoveMode">↔ MOVER</button>
+      <button id="btnRotate">⟳ ROT</button>
+      <button id="btnCancelBrush">✕</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal">
+  <div class="modal-inner">
+    <div class="modal-header">
+      <span id="modalTitle">SALVAR ARENA</span>
+      <button id="modalClose">✕</button>
+    </div>
+    <div id="modalActions" class="modal-actions"></div>
+    <textarea id="modalText" spellcheck="false"></textarea>
+    <div id="modalStatus"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="loading"><div class="spinner"></div><div>CONSTRUINDO ARENA</div></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.161.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =========================================================================
+   ARENA PERFECT 001 — versão editor com seleção/arraste
+   ========================================================================= */
+
+/* ------------------------------------------------------------------ */
+/* 1. DADOS DA ARENA                                                   */
+/* ------------------------------------------------------------------ */
+const ARENA = {
+  id: 'perfect_airsoft_001',
+  name: 'Arena Perfect 001',
+  version: '1.2',
+  size: { w: 70, d: 50, hx: 35, hz: 25 },
+  grid: 5,
+  theme: 'forest_factory',
+  spawns: [
+    { id: 'a', x: 0, z:  21, yaw: 0 },
+    { id: 'b', x: 0, z: -21, yaw: Math.PI }
+  ],
+  zones: [
+    { id:'spawn_a',   role:'safe',      label:'SPAWN A',   x:  0, z: 21, w: 12, d: 6,  color:0x4caf50 },
+    { id:'spawn_b',   role:'safe',      label:'SPAWN B',   x:  0, z:-21, w: 12, d: 6,  color:0x4caf50 },
+    { id:'center',    role:'objective', label:'CENTRO',    x:  0, z:  0, w: 12, d: 12, color:0xf5c518 },
+    { id:'flank_nw',  role:'route',     label:'BOSQUE NW', x:-20, z:-10, w: 16, d: 14, color:0x4a90e2 },
+    { id:'flank_ne',  role:'route',     label:'BUNKER NE', x: 20, z:-10, w: 16, d: 14, color:0x4a90e2 },
+    { id:'flank_sw',  role:'cqb',       label:'CQB SW',    x:-20, z: 10, w: 16, d: 14, color:0xe67e22 },
+    { id:'flank_se',  role:'fast',      label:'RÁPIDO SE', x: 20, z: 10, w: 16, d: 14, color:0xe67e22 },
+    { id:'elev_w',    role:'overwatch', label:'TORRE W',   x:-28, z:  0, w: 6,  d: 10, color:0xe74c3c },
+    { id:'elev_e',    role:'overwatch', label:'TORRE E',   x: 28, z:  0, w: 6,  d: 10, color:0xe74c3c }
+  ],
+  props: [
+    /* SPAWN A */
+    { type:'wall', variant:'high_4m', x:-4, z:21, rot:0 },
+    { type:'wall', variant:'high_4m', x: 4, z:21, rot:0 },
+    { type:'crate', variant:'medium',  x:-2, z:19, rot:0.3 },
+    { type:'crate', variant:'medium',  x: 2, z:19, rot:-0.3 },
+    { type:'barrel', variant:'single', x: 0, z:19 },
+    /* SPAWN B */
+    { type:'wall', variant:'high_4m', x:-4, z:-21, rot:0 },
+    { type:'wall', variant:'high_4m', x: 4, z:-21, rot:0 },
+    { type:'crate', variant:'medium',  x:-2, z:-19, rot:0.3 },
+    { type:'crate', variant:'medium',  x: 2, z:-19, rot:-0.3 },
+    { type:'barrel', variant:'single', x: 0, z:-19 },
+    /* Rota Sul */
+    { type:'crate', variant:'low',    x:-3, z:13, rot:0.4 },
+    { type:'crate', variant:'low',    x: 3, z:13, rot:-0.4 },
+    { type:'barrel', variant:'single', x:-1, z:12 },
+    { type:'barrel', variant:'single', x: 1, z:12 },
+    { type:'crate', variant:'medium', x: 0, z:10, rot:0.2 },
+    /* Rota Norte */
+    { type:'crate', variant:'low',    x:-3, z:-13, rot:0.4 },
+    { type:'crate', variant:'low',    x: 3, z:-13, rot:-0.4 },
+    { type:'barrel', variant:'single', x:-1, z:-12 },
+    { type:'barrel', variant:'single', x: 1, z:-12 },
+    { type:'crate', variant:'medium', x: 0, z:-10, rot:-0.2 },
+    /* Centro */
+    { type:'objective', x:0, z:0 },
+    { type:'sandbag', variant:'segment', x: 0, z:-3.5, rot:0 },
+    { type:'sandbag', variant:'segment', x:-3.5, z: 0, rot:Math.PI/2 },
+    { type:'sandbag', variant:'segment', x: 3.5, z: 0, rot:Math.PI/2 },
+    { type:'crate',  variant:'medium', x:-2, z:3, rot:0.4 },
+    { type:'crate',  variant:'medium', x: 2, z:3, rot:-0.4 },
+    { type:'barrel', variant:'stack2', x:-1.2, z:-1.5 },
+    { type:'barrel', variant:'single', x: 1.2, z:-1.5 },
+    /* Flank NW */
+    { type:'tree', variant:'large',  x:-15, z:-8  },
+    { type:'tree', variant:'large',  x:-22, z:-12 },
+    { type:'tree', variant:'large',  x:-18, z:-4  },
+    { type:'tree', variant:'small',  x:-28, z:-15 },
+    { type:'rock', variant:'large',  x:-24, z:-3  },
+    { type:'rock', variant:'medium', x:-20, z:-15 },
+    { type:'rock', variant:'medium', x:-13, z:-12 },
+    { type:'rock', variant:'small',  x:-12, z:-6  },
+    { type:'bush', variant:'medium', x:-16, z:-14 },
+    { type:'bush', variant:'medium', x:-24, z:-10 },
+    { type:'bush', variant:'small',  x:-19, z:-2  },
+    /* Flank NE */
+    { type:'bunker',    variant:'medium',   x: 20, z:-10 },
+    { type:'container', variant:'standard', x: 26, z: -8, rot:0.15 },
+    { type:'crate',     variant:'large',    x: 15, z:-14, rot:0.3 },
+    { type:'wall',      variant:'mid_4m',   x: 12, z: -8, rot:0 },
+    { type:'wall',      variant:'mid_4m',   x: 28, z:-14, rot:0 },
+    { type:'barrel',    variant:'single',   x: 16, z: -6 },
+    { type:'barrel',    variant:'single',   x: 22, z:-16 },
+    { type:'tire',      variant:'single',   x: 14, z:-11 },
+    /* Flank SW */
+    { type:'wall',   variant:'mid_4m', x:-20, z: 6, rot:0 },
+    { type:'wall',   variant:'mid_4m', x:-25, z:10, rot:Math.PI/2 },
+    { type:'wall',   variant:'mid_4m', x:-15, z:10, rot:Math.PI/2 },
+    { type:'wall',   variant:'mid_4m', x:-22, z:14, rot:0 },
+    { type:'crate',  variant:'medium', x:-18, z: 8, rot:0.3 },
+    { type:'crate',  variant:'medium', x:-22, z:12, rot:-0.2 },
+    { type:'crate',  variant:'low',    x:-19, z:14, rot:0.5 },
+    { type:'barrel', variant:'stack2', x:-16, z:12 },
+    { type:'barrel', variant:'single', x:-26, z: 8 },
+    /* Flank SE */
+    { type:'crate',  variant:'medium', x: 20, z:10, rot:0.3 },
+    { type:'crate',  variant:'medium', x: 24, z: 6, rot:-0.2 },
+    { type:'crate',  variant:'low',    x: 18, z:14, rot:0.5 },
+    { type:'barrel', variant:'single', x: 22, z:14 },
+    { type:'barrel', variant:'single', x: 26, z:10 },
+    { type:'rock',   variant:'medium', x: 15, z: 8 },
+    { type:'tire',   variant:'single', x: 27, z: 6 },
+    /* Torres */
+    { type:'tower',  variant:'low', x:-28, z:0 },
+    { type:'stairs', variant:'2m',  x:-24.5, z:0, rot:-Math.PI/2 },
+    { type:'tower',  variant:'low', x: 28, z:0 },
+    { type:'stairs', variant:'2m',  x: 24.5, z:0, rot: Math.PI/2 }
+  ]
+};
+
+const ARENA_DEFAULT = JSON.parse(JSON.stringify(ARENA));
+
+/* ------------------------------------------------------------------ */
+/* 2. TEMA                                                             */
+/* ------------------------------------------------------------------ */
+const THEMES = {
+  forest_factory: {
+    name: 'Floresta Industrial',
+    colors: {
+      sky_top: 0x3d82d6, sky_bot: 0xd7e8f6, fog: 0xc7dcee,
+      sun: 0xfff2d6, hemi_top: 0xbfe0ff, hemi_bot: 0x3a4a2e,
+      ground: { low:0x39632f, mid:0x577f3c, high:0x8d8557 }
+    },
+    materials: {
+      crate: { color:0xb07840, roughness:0.92 },
+      crateEdge: { color:0x8a5c2e, roughness:0.95 },
+      barrel: { colors:[0xb0392c,0x2a6a9e,0x3f7a44,0xb08a2a], roughness:0.62, metalness:0.35 },
+      wall: { color:0x9c8f7a, roughness:0.9 },
+      sandbag: { color:0x8a7a5c, roughness:1 },
+      trunk: { color:0x6a4a2e, roughness:1 },
+      leaf1: { color:0x2f6b34, roughness:1 },
+      leaf2: { color:0x3d7d3c, roughness:1 },
+      rock: { color:0x8b8b86, roughness:0.95 },
+      tire: { color:0x24262a, roughness:0.95 },
+      metal: { color:0x59636b, roughness:0.55, metalness:0.55 },
+      bunker: { color:0x707a82, roughness:0.85 },
+      container: { color:0x8a3b2e, roughness:0.6, metalness:0.35 },
+      tower: { color:0x6a5a4a, roughness:0.9 },
+      platform: { color:0x6f6455, roughness:0.9 },
+      bush: { color:0x3d6b30, roughness:1 },
+      objective: { color:0xf5c518, emissive:0x8a6a00, roughness:0.4, metalness:0.3 },
+      mound: { color:0x567b3a, roughness:1 },
+      fence: { color:0xaecbe0, roughness:0.6, metalness:0.4 },
+      grating: { color:0x5a6a78, roughness:0.5, metalness:0.7 }
+    }
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* 3. CORE                                                             */
+/* ------------------------------------------------------------------ */
+const canvas   = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight, false);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 400);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+});
+
+/* ------------------------------------------------------------------ */
+/* 4. MATERIAIS                                                        */
+/* ------------------------------------------------------------------ */
+function makeMaterials(theme){
+  const m = theme.materials;
+  const cache = {};
+  return {
+    get(name){
+      if(cache[name]) return cache[name];
+      const def = m[name];
+      if(!def) return new THREE.MeshStandardMaterial({color:0x888888});
+      const mat = new THREE.MeshStandardMaterial(def);
+      cache[name] = mat;
+      return mat;
+    },
+    barrel(i){
+      const arr = m.barrel.colors;
+      const k = 'barrel_' + (i % arr.length);
+      if(cache[k]) return cache[k];
+      cache[k] = new THREE.MeshStandardMaterial({
+        color: arr[i % arr.length],
+        roughness: m.barrel.roughness,
+        metalness: m.barrel.metalness
+      });
+      return cache[k];
+    }
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* 5. BUILDERS                                                         */
+/* ------------------------------------------------------------------ */
+const BUILDERS = {
+  crate(d, mats){
+    const g = new THREE.Group();
+    const sizes = { small:[0.8,0.8,0.8], medium:[1.5,1.0,1.0], low:[1.2,0.6,1.0], large:[2.0,1.5,1.5] };
+    const [w,h,dp] = sizes[d.variant] || sizes.medium;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,dp), mats.get('crate'));
+    body.position.y = h/2; body.castShadow = true; body.receiveShadow = true;
+    g.add(body);
+    const e1 = new THREE.Mesh(new THREE.BoxGeometry(w*1.02,h*0.10,dp*1.02), mats.get('crateEdge'));
+    e1.position.y = h*0.30; body.add(e1);
+    const e2 = new THREE.Mesh(new THREE.BoxGeometry(w*1.02,h*0.10,dp*1.02), mats.get('crateEdge'));
+    e2.position.y = -h*0.30; body.add(e2);
+    return g;
+  },
+  wall(d, mats){
+    const g = new THREE.Group();
+    const sizes = {
+      low_2m:[2,0.9,0.30], mid_2m:[2,1.6,0.30], high_2m:[2,2.4,0.30],
+      low_4m:[4,0.9,0.30], mid_4m:[4,1.6,0.30], high_4m:[4,2.4,0.30]
+    };
+    const [w,h,dp] = sizes[d.variant] || sizes.mid_2m;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,dp), mats.get('wall'));
+    body.position.y = h/2; body.castShadow = true; body.receiveShadow = true;
+    g.add(body);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(w*1.05,0.08,dp*1.5), mats.get('metal'));
+    cap.position.y = h + 0.04; g.add(cap);
+    return g;
+  },
+  barrel(d, mats){
+    const g = new THREE.Group();
+    const r = 0.30, h = 0.90;
+    const stack = d.variant === 'stack2' ? 2 : 1;
+    const idx = Math.floor(Math.random()*4);
+    for(let i=0;i<stack;i++){
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,14), mats.barrel(idx+i));
+      b.position.y = h/2 + i*h; b.castShadow = true; b.receiveShadow = true;
+      g.add(b);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r*1.02,0.028,6,14), mats.get('metal'));
+      ring.rotation.x = Math.PI/2; ring.position.y = i*h + h*0.26; g.add(ring);
+    }
+    return g;
+  },
+  sandbag(d, mats){
+    const g = new THREE.Group();
+    const w = 2.4, h = 1.2, segW = 0.55, rows = 3;
+    for(let r=0;r<rows;r++){
+      const count = Math.floor(w/segW);
+      for(let i=0;i<count;i++){
+        const x = -w/2 + segW*0.5 + i*segW;
+        const y = h/rows * r + h/rows*0.5;
+        const bag = new THREE.Mesh(new THREE.SphereGeometry(0.30,10,8), mats.get('sandbag'));
+        bag.scale.set(0.95,0.62,0.85);
+        bag.position.set(x,y,0); bag.castShadow = true; bag.receiveShadow = true;
+        g.add(bag);
+      }
+    }
+    return g;
+  },
+  tree(d, mats){
+    const g = new THREE.Group();
+    const large = d.variant === 'large';
+    const trunkH = large ? 4.4 : 3.0;
+    const trunkR = large ? 0.26 : 0.18;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR*0.6,trunkR,trunkH,8), mats.get('trunk'));
+    trunk.position.y = trunkH/2; trunk.castShadow = true;
+    g.add(trunk);
+    const leafMat = Math.random() > 0.5 ? mats.get('leaf1') : mats.get('leaf2');
+    const layers = large ? 3 : 2;
+    for(let i=0;i<layers;i++){
+      const s = (large ? 1.9 : 1.3) - i*0.42;
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(s, large?1.9:1.4, 8), leafMat);
+      cone.position.y = trunkH*0.55 + i*1.15; cone.castShadow = true;
+      g.add(cone);
+    }
+    return g;
+  },
+  rock(d, mats){
+    const g = new THREE.Group();
+    const s = d.variant === 'large' ? 1.4 : d.variant === 'small' ? 0.6 : 0.95;
+    const geo = new THREE.IcosahedronGeometry(s, 0);
+    const p = geo.attributes.position;
+    for(let i=0;i<p.count;i++){
+      p.setXYZ(i, p.getX(i)*(0.75+Math.random()*0.5), p.getY(i)*(0.6+Math.random()*0.5), p.getZ(i)*(0.75+Math.random()*0.5));
+    }
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, mats.get('rock'));
+    m.position.y = s*0.55;
+    m.rotation.set(Math.random()*3, Math.random()*3, Math.random()*3);
+    m.castShadow = true; m.receiveShadow = true;
+    g.add(m);
+    return g;
+  },
+  bush(d, mats){
+    const g = new THREE.Group();
+    const s = d.variant === 'small' ? 0.55 : 0.75;
+    for(let i=0;i<3;i++){
+      const blob = new THREE.Mesh(new THREE.SphereGeometry(s*(0.7+Math.random()*0.5), 8, 6), mats.get('bush'));
+      blob.position.set((Math.random()-0.5)*s, s*0.6+Math.random()*0.15, (Math.random()-0.5)*s);
+      blob.castShadow = true;
+      g.add(blob);
+    }
+    return g;
+  },
+  tire(d, mats){
+    const g = new THREE.Group();
+    const stack = d.variant === 'stack3' ? 3 : d.variant === 'stack2' ? 2 : 1;
+    for(let i=0;i<stack;i++){
+      const t = new THREE.Mesh(new THREE.TorusGeometry(0.35,0.14,8,16), mats.get('tire'));
+      t.rotation.x = Math.PI/2; t.position.y = 0.14 + i*0.28;
+      t.castShadow = true; t.receiveShadow = true;
+      g.add(t);
+    }
+    return g;
+  },
+  bunker(d, mats){
+    const g = new THREE.Group();
+    const w = 4, h = 3, dp = 4;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,dp), mats.get('bunker'));
+    body.position.y = h/2; body.castShadow = true; body.receiveShadow = true;
+    g.add(body);
+    const slit = new THREE.Mesh(new THREE.BoxGeometry(w*0.8,0.4,0.05), new THREE.MeshBasicMaterial({color:0x101418}));
+    slit.position.set(0, h*0.72, dp/2 + 0.026); g.add(slit);
+    const parapet = new THREE.Mesh(new THREE.BoxGeometry(w*1.05,0.35,dp*1.05), mats.get('metal'));
+    parapet.position.y = h + 0.175; g.add(parapet);
+    return g;
+  },
+  container(d, mats){
+    const g = new THREE.Group();
+    const w = 6, h = 2.6, dp = 2.4;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w,h,dp), mats.get('container'));
+    body.position.y = h/2; body.castShadow = true; body.receiveShadow = true;
+    g.add(body);
+    for(let i=-2;i<=2;i++){
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.08, h*0.94, dp*1.02), mats.get('metal'));
+      rib.position.set(i*(w/5), h/2, 0); g.add(rib);
+    }
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(w*1.02,0.12,dp*1.02), mats.get('metal'));
+    cap.position.y = h + 0.06; g.add(cap);
+    return g;
+  },
+  tower(d, mats){
+    const g = new THREE.Group();
+    const baseW = 4, baseD = 4, height = 2.4;
+    const postGeo = new THREE.BoxGeometry(0.25, height, 0.25);
+    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz]) => {
+      const post = new THREE.Mesh(postGeo, mats.get('tower'));
+      post.position.set(sx*(baseW/2-0.15), height/2, sz*(baseD/2-0.15));
+      post.castShadow = true; g.add(post);
+    });
+    const plat = new THREE.Mesh(new THREE.BoxGeometry(baseW,0.20,baseD), mats.get('platform'));
+    plat.position.y = height; plat.castShadow = true; plat.receiveShadow = true;
+    g.add(plat);
+    const rail = (w,dp,x,z) => {
+      const r = new THREE.Mesh(new THREE.BoxGeometry(w,0.9,dp), mats.get('tower'));
+      r.position.set(x, height+0.45, z); r.castShadow = true; g.add(r);
+    };
+    rail(baseW, 0.15, 0, -baseD/2+0.08);
+    rail(0.15, baseD, -baseW/2+0.08, 0);
+    rail(0.15, baseD, baseW/2-0.08, 0);
+    return g;
+  },
+  stairs(d, mats){
+    const g = new THREE.Group();
+    const steps = 8, rise = 0.30, run = 0.32, width = 1.4;
+    for(let i=0;i<steps;i++){
+      const step = new THREE.Mesh(new THREE.BoxGeometry(width, rise, run*1.3), mats.get('tower'));
+      step.position.set(0, rise*(i+0.5), run*i);
+      step.castShadow = true; step.receiveShadow = true;
+      g.add(step);
+    }
+    const base = new THREE.Mesh(new THREE.BoxGeometry(width*0.9, 0.06, steps*run), mats.get('platform'));
+    base.position.set(0, 0.03, (steps*run)/2 - run/2);
+    g.add(base);
+    return g;
+  },
+  objective(d, mats){
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({
+      color: mats.get('objective').color,
+      emissive: mats.get('objective').emissive || 0x8a6a00,
+      emissiveIntensity: 0.6, roughness: 0.4, metalness: 0.3
+    });
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.5,1.2,16), mat);
+    pillar.position.y = 0.6; pillar.castShadow = true; g.add(pillar);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55,0.06,8,24), mat);
+    ring.rotation.x = Math.PI/2; ring.position.y = 1.3; g.add(ring);
+    const light = new THREE.PointLight(mat.color, 0.6, 6, 2);
+    light.position.y = 1.2; g.add(light);
+    return g;
+  },
+  mound(d, mats){
+    const g = new THREE.Group();
+    const s = d.variant === 'large' ? 6 : d.variant === 'small' ? 3 : 4.5;
+    const geo = new THREE.SphereGeometry(s, 20, 14, 0, Math.PI*2, 0, Math.PI/2);
+    const m = new THREE.Mesh(geo, mats.get('mound'));
+    m.position.y = 0.05; m.scale.y = 0.45;
+    m.castShadow = true; m.receiveShadow = true;
+    g.add(m);
+    return g;
+  },
+  fence(d, mats){
+    const g = new THREE.Group();
+    const w = 4, h = 2.4;
+    const postGeo = new THREE.CylinderGeometry(0.06,0.06,h,6);
+    [-w/2, w/2].forEach(x => {
+      const post = new THREE.Mesh(postGeo, mats.get('metal'));
+      post.position.set(x, h/2, 0); post.castShadow = true; g.add(post);
+    });
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const ctx = cv.getContext('2d');
+    ctx.strokeStyle = 'rgba(200,220,235,0.9)'; ctx.lineWidth = 1.2;
+    for(let i=0;i<=64;i+=10){
+      ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,64); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(64,i); ctx.stroke();
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(w, h);
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshStandardMaterial({
+        map: tex, transparent:true, alphaTest: 0.35, side: THREE.DoubleSide,
+        color: mats.get('fence').color, roughness: 0.5, metalness: 0.5
+      })
+    );
+    mesh.position.y = h/2; g.add(mesh);
+    return g;
+  },
+  grating(d, mats){
+    const g = new THREE.Group();
+    const s = 2;
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#3a4a58'; ctx.fillRect(0,0,64,64);
+    ctx.strokeStyle = '#6a7a88'; ctx.lineWidth = 2;
+    for(let i=0;i<=64;i+=8){
+      ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,64); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(64,i); ctx.stroke();
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(4,4);
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(s, 0.06, s),
+      new THREE.MeshStandardMaterial({ map: tex, color: mats.get('grating').color, roughness: 0.5, metalness: 0.7 })
+    );
+    mesh.position.y = 0.03; mesh.receiveShadow = true;
+    g.add(mesh);
+    return g;
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* 6. BUILD ARENA / AMBIENTE / ZONAS                                   */
+/* ------------------------------------------------------------------ */
+let arenaRoot = null;
+let sceneLights = [];
+let gridHelper = null;
+let zoneGroup = null;
+let labelSprites = [];
+let currentMats = null;
+
+function buildArena(){
+  if(arenaRoot) scene.remove(arenaRoot);
+  arenaRoot = new THREE.Group();
+  currentMats = makeMaterials(THEMES[ARENA.theme]);
+
+  for(let i=0;i<ARENA.props.length;i++){
+    const p = ARENA.props[i];
+    const builder = BUILDERS[p.type];
+    if(!builder) continue;
+    let obj;
+    try { obj = builder(p, currentMats); }
+    catch(err){ console.warn('[Arena] builder error', p, err); continue; }
+    obj.position.set(p.x||0, p.y||0, p.z||0);
+    obj.rotation.y = p.rot || 0;
+    obj.userData.propIndex = i;
+    obj.traverse(child => { child.userData.propIndex = i; });
+    arenaRoot.add(obj);
+  }
+  scene.add(arenaRoot);
+  document.getElementById('stProps').textContent = ARENA.props.length;
+  document.getElementById('stZones').textContent = ARENA.zones.length;
+  updateSelectionHelper();
+  updateSelectedInfo();
+}
+
+function buildEnvironment(){
+  sceneLights.forEach(l => scene.remove(l));
+  sceneLights = [];
+  const theme = THEMES[ARENA.theme];
+  const c = theme.colors;
+
+  const oldSky = scene.getObjectByName('sky');
+  if(oldSky) scene.remove(oldSky);
+  const skyGeo = new THREE.SphereGeometry(220, 20, 14);
+  const skyMat = new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false,
+    uniforms: { topColor:{value:new THREE.Color(c.sky_top)}, bottomColor:{value:new THREE.Color(c.sky_bot)} },
+    vertexShader: `varying vec3 vPos; void main(){ vPos=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `varying vec3 vPos; uniform vec3 topColor; uniform vec3 bottomColor;
+      void main(){ float h=normalize(vPos).y*0.5+0.5;
+        gl_FragColor=vec4(mix(bottomColor,topColor,pow(clamp(h,0.0,1.0),0.85)),1.0); }`
+  });
+  const sky = new THREE.Mesh(skyGeo, skyMat);
+  sky.name = 'sky'; scene.add(sky);
+  scene.fog = new THREE.Fog(c.fog, 70, 180);
+
+  const hemi = new THREE.HemisphereLight(c.hemi_top, c.hemi_bot, 0.85);
+  scene.add(hemi); sceneLights.push(hemi);
+  const amb = new THREE.AmbientLight(0xffffff, 0.22);
+  scene.add(amb); sceneLights.push(amb);
+  const sun = new THREE.DirectionalLight(c.sun, 2.1);
+  sun.position.set(34,46,24);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048,2048);
+  sun.shadow.camera.left=-46; sun.shadow.camera.right=46;
+  sun.shadow.camera.top=46; sun.shadow.camera.bottom=-46;
+  sun.shadow.camera.near=1; sun.shadow.camera.far=140;
+  sun.shadow.bias=-0.0006; sun.shadow.normalBias=0.02;
+  scene.add(sun); sceneLights.push(sun); scene.add(sun.target);
+
+  const oldGround = scene.getObjectByName('ground');
+  if(oldGround) scene.remove(oldGround);
+  const geo = new THREE.PlaneGeometry(ARENA.size.w, ARENA.size.d, 40, 30);
+  geo.rotateX(-Math.PI/2);
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count*3);
+  const cLow = new THREE.Color(c.ground.low);
+  const cMid = new THREE.Color(c.ground.mid);
+  const cHigh = new THREE.Color(c.ground.high);
+  const tmp = new THREE.Color();
+  for(let i=0;i<pos.count;i++){
+    const x = pos.getX(i), z = pos.getZ(i);
+    const edge = Math.min(1, Math.max((Math.abs(x)-ARENA.size.hx+6)/6, (Math.abs(z)-ARENA.size.hz+6)/6));
+    const y = edge * 0.25 * (0.7 + 0.3*Math.sin(x*0.3)*Math.cos(z*0.2));
+    pos.setY(i, y);
+    const n = 0.9 + 0.2*Math.sin(x*2.1+z*1.7)*Math.cos(x*1.3-z*2.3);
+    tmp.copy(cLow).lerp(cMid, 0.5 + 0.4*Math.sin(x*0.1)*Math.cos(z*0.1));
+    if(edge > 0.5) tmp.lerp(cHigh, (edge-0.5)*2);
+    colors[i*3] = tmp.r*n; colors[i*3+1] = tmp.g*n; colors[i*3+2] = tmp.b*n;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({vertexColors:true, roughness:1, metalness:0}));
+  ground.name = 'ground'; ground.receiveShadow = true; scene.add(ground);
+
+  if(gridHelper) scene.remove(gridHelper);
+  const gs = ARENA.grid;
+  const nx = Math.round(ARENA.size.w/gs);
+  gridHelper = new THREE.GridHelper(ARENA.size.w, nx, 0x7ec8ff, 0x3a5570);
+  gridHelper.position.y = 0.02;
+  gridHelper.material.opacity = 0.35;
+  gridHelper.material.transparent = true;
+  scene.add(gridHelper);
+
+  buildZones();
+}
+
+function buildZones(){
+  if(zoneGroup) scene.remove(zoneGroup);
+  zoneGroup = new THREE.Group();
+  scene.add(zoneGroup);
+  labelSprites.forEach(s => { if(s.parent) s.parent.remove(s); });
+  labelSprites = [];
+  for(const zone of ARENA.zones){
+    const color = new THREE.Color(zone.color);
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(zone.w, zone.d),
+      new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.14, depthWrite:false, side:THREE.DoubleSide})
+    );
+    plane.rotation.x = -Math.PI/2; plane.position.set(zone.x, 0.03, zone.z);
+    zoneGroup.add(plane);
+    const edges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.PlaneGeometry(zone.w, zone.d)),
+      new THREE.LineBasicMaterial({color, transparent:true, opacity:0.6})
+    );
+    edges.rotation.x = -Math.PI/2; edges.position.set(zone.x, 0.035, zone.z);
+    zoneGroup.add(edges);
+    const cv = document.createElement('canvas');
+    cv.width = 512; cv.height = 128;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = 'rgba(8,18,28,0.82)';
+    roundRect(ctx, 0, 0, 512, 128, 20); ctx.fill();
+    ctx.strokeStyle = '#' + color.getHexString(); ctx.lineWidth = 4;
+    roundRect(ctx, 2, 2, 508, 124, 18); ctx.stroke();
+    ctx.fillStyle = '#eaf2ff'; ctx.font = 'bold 42px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(zone.label, 256, 64);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true, depthWrite:false}));
+    sprite.position.set(zone.x, 3.2, zone.z);
+    sprite.scale.set(5.0, 1.25, 1);
+    zoneGroup.add(sprite);
+    labelSprites.push(sprite);
+  }
+}
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+
+/* ------------------------------------------------------------------ */
+/* 7. CÂMERA                                                           */
+/* ------------------------------------------------------------------ */
+const camState = { target: new THREE.Vector3(0,0,0), yaw: Math.PI*0.25, pitch: 0.65, dist: 55 };
+function applyCamera(){
+  const cp = Math.cos(camState.pitch), sp = Math.sin(camState.pitch);
+  const offset = new THREE.Vector3(Math.sin(camState.yaw)*cp, sp, Math.cos(camState.yaw)*cp).multiplyScalar(camState.dist);
+  camera.position.copy(camState.target).add(offset);
+  camera.lookAt(camState.target);
+}
+
+/* ------------------------------------------------------------------ */
+/* 8. ESTADO DO EDITOR                                                 */
+/* ------------------------------------------------------------------ */
+const editorState = {
+  activeBrush: null,       // null | 'mover' | 'delete' | { type, variant }
+  brushRotation: 0,
+  ghost: null,
+  ghostPos: null,
+  dragState: null,         // { index, pointerId, startPt, startPos }
+  selectedIndex: null
+};
+
+const ghostMat = new THREE.MeshBasicMaterial({ color: 0x6cf4b0, transparent: true, opacity: 0.5, depthWrite: false });
+const selectionHelper = { obj: null };
+
+const raycaster = new THREE.Raycaster();
+const pointerNDC = new THREE.Vector2();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+
+function getPlacementPoint(clientX, clientY){
+  const rect = canvas.getBoundingClientRect();
+  pointerNDC.x = ((clientX-rect.left)/rect.width)*2 - 1;
+  pointerNDC.y = -((clientY-rect.top)/rect.height)*2 + 1;
+  raycaster.setFromCamera(pointerNDC, camera);
+  raycaster.far = 300;
+  if(arenaRoot){
+    const hits = raycaster.intersectObject(arenaRoot, true);
+    if(hits.length > 0) return hits[0].point.clone();
+  }
+  const pt = new THREE.Vector3();
+  if(raycaster.ray.intersectPlane(groundPlane, pt)) return pt;
+  return null;
+}
+
+function getGroundPoint(clientX, clientY){
+  const rect = canvas.getBoundingClientRect();
+  pointerNDC.x = ((clientX-rect.left)/rect.width)*2 - 1;
+  pointerNDC.y = -((clientY-rect.top)/rect.height)*2 + 1;
+  raycaster.setFromCamera(pointerNDC, camera);
+  const pt = new THREE.Vector3();
+  if(raycaster.ray.intersectPlane(groundPlane, pt)) return pt;
+  return null;
+}
+
+function getPropIndexAt(clientX, clientY){
+  const rect = canvas.getBoundingClientRect();
+  pointerNDC.x = ((clientX-rect.left)/rect.width)*2 - 1;
+  pointerNDC.y = -((clientY-rect.top)/rect.height)*2 + 1;
+  raycaster.setFromCamera(pointerNDC, camera);
+  raycaster.far = 300;
+  if(!arenaRoot) return null;
+  const hits = raycaster.intersectObject(arenaRoot, true);
+  for(const h of hits){
+    if(typeof h.object.userData.propIndex === 'number'){
+      return h.object.userData.propIndex;
+    }
+  }
+  return null;
+}
+
+function getPropObject(index){
+  if(!arenaRoot) return null;
+  for(const child of arenaRoot.children){
+    if(child.userData.propIndex === index) return child;
+  }
+  return null;
+}
+
+/* ---- Brush (place new) ---- */
+function makeGhost(){
+  if(editorState.ghost){ scene.remove(editorState.ghost); editorState.ghost = null; }
+  const brush = editorState.activeBrush;
+  if(!brush || typeof brush !== 'object') return;
+  const builder = BUILDERS[brush.type];
+  if(!builder) return;
+  const obj = builder({ type: brush.type, variant: brush.variant }, currentMats);
+  obj.traverse(child => {
+    if(child.isMesh){
+      child.material = ghostMat;
+      child.castShadow = false; child.receiveShadow = false;
+    }
+  });
+  editorState.ghost = obj;
+  scene.add(obj);
+}
+
+function updateGhost(clientX, clientY){
+  if(!editorState.ghost) return;
+  const pt = getPlacementPoint(clientX, clientY);
+  if(pt){
+    editorState.ghostPos = pt;
+    editorState.ghost.position.copy(pt);
+    editorState.ghost.rotation.y = editorState.brushRotation * Math.PI / 180;
+  }
+}
+
+function placeBrush(clientX, clientY){
+  const brush = editorState.activeBrush;
+  if(!brush || typeof brush !== 'object') return;
+  const pt = getPlacementPoint(clientX, clientY);
+  if(!pt) return;
+  ARENA.props.push({
+    type: brush.type,
+    variant: brush.variant,
+    x: +pt.x.toFixed(2),
+    y: +pt.y.toFixed(2),
+    z: +pt.z.toFixed(2),
+    rot: +(editorState.brushRotation * Math.PI / 180).toFixed(3)
+  });
+  buildArena();
+  showToast('ADICIONADO: ' + (brush.variant || brush.type).toUpperCase());
+}
+
+/* ---- Seleção ---- */
+function updateSelectionHelper(){
+  if(selectionHelper.obj){ scene.remove(selectionHelper.obj); selectionHelper.obj = null; }
+  if(editorState.selectedIndex === null) return;
+  const obj = getPropObject(editorState.selectedIndex);
+  if(!obj) return;
+  const box = new THREE.BoxHelper(obj, 0xffdd33);
+  box.material.depthTest = false;
+  box.material.transparent = true;
+  box.material.opacity = 0.95;
+  box.renderOrder = 999;
+  scene.add(box);
+  selectionHelper.obj = box;
+}
+
+function selectProp(index){
+  if(index === null){
+    editorState.selectedIndex = null;
+  } else {
+    editorState.selectedIndex = index;
+  }
+  updateSelectionHelper();
+  updateSelectedInfo();
+}
+
+function updateSelectedInfo(){
+  const panel = document.getElementById('selectedPanel');
+  const info = document.getElementById('selectedInfo');
+  if(editorState.selectedIndex === null){
+    panel.classList.add('hidden');
+    return;
+  }
+  const p = ARENA.props[editorState.selectedIndex];
+  if(!p){ panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+  const variantStr = p.variant ? ' · ' + p.variant.toUpperCase() : '';
+  info.innerHTML = `
+    <b>${p.type.toUpperCase()}${variantStr}</b><br>
+    <span class="coords">X: ${p.x.toFixed(1)} · Z: ${p.z.toFixed(1)} · ROT: ${Math.round((p.rot||0)*180/Math.PI)}°</span>
+  `;
+}
+
+/* ---- Ações do item selecionado ---- */
+function rotateSelected(){
+  const idx = editorState.selectedIndex;
+  if(idx === null) return;
+  const p = ARENA.props[idx];
+  if(!p) return;
+  p.rot = ((p.rot || 0) + Math.PI/4) % (Math.PI*2);
+  const obj = getPropObject(idx);
+  if(obj) obj.rotation.y = p.rot;
+  updateSelectionHelper();
+  updateSelectedInfo();
+}
+
+function duplicateSelected(){
+  const idx = editorState.selectedIndex;
+  if(idx === null) return;
+  const p = ARENA.props[idx];
+  if(!p) return;
+  const np = JSON.parse(JSON.stringify(p));
+  np.x = (np.x || 0) + 2;
+  np.z = (np.z || 0) + 2;
+  ARENA.props.push(np);
+  buildArena();
+  selectProp(ARENA.props.length - 1);
+  showToast('ITEM DUPLICADO');
+}
+
+function deleteSelected(){
+  const idx = editorState.selectedIndex;
+  if(idx === null) return;
+  ARENA.props.splice(idx, 1);
+  editorState.selectedIndex = null;
+  buildArena();
+  updateSelectionHelper();
+  updateSelectedInfo();
+  showToast('ITEM DELETADO');
+}
+
+/* ---- Ferramentas ---- */
+function setBrush(type, variant){
+  editorState.activeBrush = { type, variant };
+  editorState.brushRotation = 0;
+  makeGhost();
+  updateBrushStatus();
+  refreshItemButtons();
+}
+
+function setMoverMode(){
+  editorState.activeBrush = 'mover';
+  editorState.brushRotation = 0;
+  if(editorState.ghost){ scene.remove(editorState.ghost); editorState.ghost = null; }
+  selectProp(null);
+  updateBrushStatus();
+  refreshItemButtons();
+}
+
+function setDeleteMode(){
+  editorState.activeBrush = 'delete';
+  editorState.brushRotation = 0;
+  if(editorState.ghost){ scene.remove(editorState.ghost); editorState.ghost = null; }
+  selectProp(null);
+  updateBrushStatus();
+  refreshItemButtons();
+}
+
+function cancelBrush(){
+  editorState.activeBrush = null;
+  editorState.brushRotation = 0;
+  if(editorState.ghost){ scene.remove(editorState.ghost); editorState.ghost = null; }
+  editorState.ghostPos = null;
+  selectProp(null);
+  updateBrushStatus();
+  refreshItemButtons();
+}
+
+function rotateBrush(deg){
+  editorState.brushRotation = (editorState.brushRotation + deg) % 360;
+  if(editorState.ghost) editorState.ghost.rotation.y = editorState.brushRotation * Math.PI / 180;
+  updateBrushStatus();
+}
+
+function updateBrushStatus(){
+  const el = document.getElementById('brushStatus');
+  const btnMove = document.getElementById('btnMoveMode');
+  el.className = '';
+  btnMove.classList.remove('mover');
+  const b = editorState.activeBrush;
+  if(!b){
+    el.textContent = 'NENHUMA FERRAMENTA';
+  } else if(b === 'mover'){
+    el.textContent = '↔ MOVER — TOQUE EM UM ITEM E ARRASTE';
+    el.classList.add('active', 'mover');
+    btnMove.classList.add('mover');
+  } else if(b === 'delete'){
+    el.textContent = '🗑 APAGAR — TOQUE EM UM ITEM';
+    el.classList.add('active');
+  } else {
+    const label = (b.variant || b.type).toUpperCase();
+    el.textContent = `COLOCANDO: ${label} · ROT ${editorState.brushRotation}°`;
+    el.classList.add('active');
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 9. INTERAÇÃO COM PONTEIRO                                           */
+/* ------------------------------------------------------------------ */
+let pointerMode = null;
+let lastPointer = { x:0, y:0 };
+const activePointers = new Map();
+let tapCandidate = null;
+let pinchStartDist = 0;
+let pinchStartCamDist = 0;
+
+canvas.addEventListener('pointerdown', e => {
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY, button: e.button });
+  canvas.setPointerCapture(e.pointerId);
+
+  if(activePointers.size === 1){
+    // MODO MOVER — tenta selecionar item e iniciar drag
+    if(editorState.activeBrush === 'mover'){
+      const idx = getPropIndexAt(e.clientX, e.clientY);
+      if(idx !== null){
+        selectProp(idx);
+        const pt = getGroundPoint(e.clientX, e.clientY);
+        if(pt){
+          editorState.dragState = {
+            index: idx,
+            pointerId: e.pointerId,
+            startPt: pt.clone(),
+            startPos: new THREE.Vector3(
+              ARENA.props[idx].x || 0,
+              ARENA.props[idx].y || 0,
+              ARENA.props[idx].z || 0
+            ),
+            moved: false
+          };
+          pointerMode = null;
+          tapCandidate = null;
+          return;
+        }
+      } else {
+        selectProp(null);
+      }
+    }
+
+    // MODO DELETE — apaga item no tap
+    if(editorState.activeBrush === 'delete'){
+      const idx = getPropIndexAt(e.clientX, e.clientY);
+      if(idx !== null){
+        ARENA.props.splice(idx, 1);
+        buildArena();
+        showToast('ITEM REMOVIDO');
+        return;
+      }
+    }
+
+    // Normal → câmera
+    pointerMode = (e.button === 2) ? 'pan' : 'orbit';
+    lastPointer.x = e.clientX; lastPointer.y = e.clientY;
+    tapCandidate = { x: e.clientX, y: e.clientY, id: e.pointerId, valid: true };
+  } else if(activePointers.size === 2){
+    pointerMode = 'pan';
+    const pts = [...activePointers.values()];
+    lastPointer.x = (pts[0].x + pts[1].x) / 2;
+    lastPointer.y = (pts[0].y + pts[1].y) / 2;
+    tapCandidate = null;
+    pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    pinchStartCamDist = camState.dist;
+  }
+});
+
+canvas.addEventListener('pointermove', e => {
+  if(!activePointers.has(e.pointerId)) return;
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY, button: e.button });
+
+  // DRAG ATIVO
+  if(editorState.dragState && editorState.dragState.pointerId === e.pointerId){
+    const pt = getGroundPoint(e.clientX, e.clientY);
+    if(pt){
+      const ds = editorState.dragState;
+      const dx = pt.x - ds.startPt.x;
+      const dz = pt.z - ds.startPt.z;
+      if(Math.abs(dx) > 0.05 || Math.abs(dz) > 0.05) ds.moved = true;
+      ARENA.props[ds.index].x = +(ds.startPos.x + dx).toFixed(2);
+      ARENA.props[ds.index].z = +(ds.startPos.z + dz).toFixed(2);
+      const obj = getPropObject(ds.index);
+      if(obj) obj.position.set(ARENA.props[ds.index].x, ARENA.props[ds.index].y || 0, ARENA.props[ds.index].z);
+      updateSelectionHelper();
+      updateSelectedInfo();
+    }
+    return;
+  }
+
+  // Tap candidate validation
+  if(tapCandidate && tapCandidate.id === e.pointerId){
+    const dx = e.clientX - tapCandidate.x;
+    const dy = e.clientY - tapCandidate.y;
+    if(Math.abs(dx) > 6 || Math.abs(dy) > 6) tapCandidate.valid = false;
+  }
+
+  if(pointerMode === 'orbit' && activePointers.size === 1){
+    const dx = e.clientX - lastPointer.x;
+    const dy = e.clientY - lastPointer.y;
+    lastPointer.x = e.clientX; lastPointer.y = e.clientY;
+    camState.yaw -= dx * 0.005;
+    camState.pitch = Math.max(0.05, Math.min(1.45, camState.pitch + dy * 0.004));
+  } else if(pointerMode === 'pan' && activePointers.size >= 1){
+    let dx, dy;
+    if(activePointers.size === 2){
+      const pts = [...activePointers.values()];
+      const cx = (pts[0].x + pts[1].x) / 2;
+      const cy = (pts[0].y + pts[1].y) / 2;
+      dx = cx - lastPointer.x; dy = cy - lastPointer.y;
+      lastPointer.x = cx; lastPointer.y = cy;
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      if(pinchStartDist > 0){
+        camState.dist = Math.max(8, Math.min(140, pinchStartCamDist * pinchStartDist / dist));
+      }
+    } else {
+      dx = e.clientX - lastPointer.x; dy = e.clientY - lastPointer.y;
+      lastPointer.x = e.clientX; lastPointer.y = e.clientY;
+    }
+    const fwd = new THREE.Vector3(-Math.sin(camState.yaw), 0, -Math.cos(camState.yaw));
+    const right = new THREE.Vector3(Math.cos(camState.yaw), 0, -Math.sin(camState.yaw));
+    const speed = camState.dist * 0.0018;
+    camState.target.addScaledVector(right, -dx * speed);
+    camState.target.addScaledVector(fwd, dy * speed);
+  }
+
+  // ghost follows cursor
+  updateGhost(e.clientX, e.clientY);
+});
+
+function releasePointer(e){
+  activePointers.delete(e.pointerId);
+  if(activePointers.size === 0){ pointerMode = null; }
+  else if(activePointers.size === 1){
+    const p = [...activePointers.values()][0];
+    lastPointer.x = p.x; lastPointer.y = p.y;
+    pointerMode = 'orbit';
+  }
+}
+
+canvas.addEventListener('pointerup', e => {
+  // Finaliza drag
+  if(editorState.dragState && editorState.dragState.pointerId === e.pointerId){
+    if(editorState.dragState.moved) showToast('POSIÇÃO ATUALIZADA');
+    editorState.dragState = null;
+  }
+
+  const wasTap = tapCandidate && tapCandidate.id === e.pointerId && tapCandidate.valid && activePointers.size === 1;
+  if(wasTap && editorState.activeBrush && typeof editorState.activeBrush === 'object'){
+    placeBrush(e.clientX, e.clientY);
+  }
+  if(activePointers.size <= 1) tapCandidate = null;
+  releasePointer(e);
+});
+
+canvas.addEventListener('pointercancel', e => {
+  if(editorState.dragState && editorState.dragState.pointerId === e.pointerId){
+    editorState.dragState = null;
+  }
+  if(activePointers.size <= 1) tapCandidate = null;
+  releasePointer(e);
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  camState.dist = Math.max(8, Math.min(140, camState.dist * (1 + e.deltaY * 0.0012)));
+}, { passive: false });
+
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if(e.code === 'KeyR'){ resetCamera(); e.preventDefault(); }
+  if(e.code === 'Escape'){ cancelBrush(); }
+  if(e.code === 'KeyQ' && editorState.activeBrush && typeof editorState.activeBrush === 'object'){ rotateBrush(-15); }
+  if(e.code === 'KeyE' && editorState.activeBrush && typeof editorState.activeBrush === 'object'){ rotateBrush(15); }
+  if(e.code === 'Delete' && editorState.selectedIndex !== null){ deleteSelected(); }
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+function keyboardPan(dt){
+  const fwd = new THREE.Vector3(-Math.sin(camState.yaw), 0, -Math.cos(camState.yaw));
+  const right = new THREE.Vector3(Math.cos(camState.yaw), 0, -Math.sin(camState.yaw));
+  const speed = camState.dist * 0.9 * dt;
+  if(keys['KeyW'] || keys['ArrowUp'])    camState.target.addScaledVector(fwd, speed);
+  if(keys['KeyS'] || keys['ArrowDown'])  camState.target.addScaledVector(fwd, -speed);
+  if(keys['KeyA'] || keys['ArrowLeft'])  camState.target.addScaledVector(right, -speed);
+  if(keys['KeyD'] || keys['ArrowRight']) camState.target.addScaledVector(right, speed);
+  if(keys['KeyZ']) camState.target.y = Math.max(0, camState.target.y - speed);
+  if(keys['KeyX']) camState.target.y = Math.min(6, camState.target.y + speed);
+}
+function resetCamera(){
+  camState.target.set(0,0,0);
+  camState.yaw = Math.PI*0.25;
+  camState.pitch = 0.65;
+  camState.dist = 55;
+}
+
+/* ------------------------------------------------------------------ */
+/* 10. EDITOR UI                                                       */
+/* ------------------------------------------------------------------ */
+const EDITOR_ITEMS = {
+  terreno: [
+    { type:'mound', variant:'large',  label:'MORRO G', icon:'⛰' },
+    { type:'mound', variant:'medium', label:'MORRO M', icon:'⛰' },
+    { type:'mound', variant:'small',  label:'MORRO P', icon:'⛰' },
+    { type:'stairs', variant:'2m',    label:'RAMPA',   icon:'📐' }
+  ],
+  estruturas: [
+    { type:'wall', variant:'low_4m',  label:'MURO BAIXO', icon:'▬' },
+    { type:'wall', variant:'mid_4m',  label:'MURO MÉDIO', icon:'▬' },
+    { type:'wall', variant:'high_4m', label:'MURO ALTO',  icon:'▬' },
+    { type:'bunker', variant:'medium', label:'BUNKER',     icon:'⬛' },
+    { type:'container', variant:'standard', label:'CONTAINER', icon:'📦' },
+    { type:'tower', variant:'low', label:'TORRE', icon:'🏰' },
+    { type:'stairs', variant:'2m', label:'ESCADA', icon:'📶' },
+    { type:'fence', variant:'standard', label:'ALAMBRADO', icon:'⚏' },
+    { type:'grating', variant:'standard', label:'GRADE', icon:'▦' }
+  ],
+  cobertura: [
+    { type:'crate', variant:'small',  label:'CAIXOTE P', icon:'🟫' },
+    { type:'crate', variant:'medium', label:'CAIXOTE M', icon:'🟫' },
+    { type:'crate', variant:'large',  label:'CAIXOTE G', icon:'🟫' },
+    { type:'crate', variant:'low',    label:'CAIXOTE B', icon:'🟫' },
+    { type:'barrel', variant:'single', label:'TAMBOR',  icon:'🛢' },
+    { type:'barrel', variant:'stack2', label:'TAMBOR X2', icon:'🛢' },
+    { type:'sandbag', variant:'segment', label:'SACO AREIA', icon:'🟨' },
+    { type:'tire', variant:'single', label:'PNEU', icon:'⭕' },
+    { type:'tire', variant:'stack3', label:'PNEU X3', icon:'⭕' }
+  ],
+  natureza: [
+    { type:'tree', variant:'large', label:'ÁRVORE G', icon:'🌳' },
+    { type:'tree', variant:'small', label:'ÁRVORE P', icon:'🌲' },
+    { type:'bush', variant:'medium', label:'ARBUSTO', icon:'🌿' },
+    { type:'rock', variant:'large', label:'PEDRA G', icon:'🪨' },
+    { type:'rock', variant:'medium', label:'PEDRA M', icon:'🪨' },
+    { type:'rock', variant:'small', label:'PEDRA P', icon:'🪨' },
+    { type:'objective', label:'OBJETIVO', icon:'⭐' }
+  ],
+  acoes: [
+    { type:'__move', label:'MOVER', icon:'↔' },
+    { type:'__delete', label:'APAGAR', icon:'🗑' },
+    { type:'__save', label:'SALVAR', icon:'💾' },
+    { type:'__load', label:'CARREGAR', icon:'📂' },
+    { type:'__download', label:'BAIXAR .JS', icon:'⬇' },
+    { type:'__reset', label:'RESETAR', icon:'🔄' },
+    { type:'__clear', label:'LIMPAR TUDO', icon:'✕' }
+  ]
+};
+
+function renderEditorItems(tab){
+  const container = document.getElementById('editorItems');
+  container.innerHTML = '';
+  const items = EDITOR_ITEMS[tab] || [];
+  for(const item of items){
+    const btn = document.createElement('button');
+    btn.className = 'item-btn';
+    btn.dataset.type = item.type;
+    btn.dataset.variant = item.variant || '';
+    if(item.type === '__delete') btn.classList.add('delete');
+    else if(item.type === '__move') btn.classList.add('action');
+    else if(item.type.startsWith('__')) btn.classList.add('action');
+    btn.innerHTML = `<span class="icon">${item.icon || '•'}</span><span>${item.label}</span>`;
+
+    btn.addEventListener('click', () => {
+      if(item.type === '__move'){ setMoverMode(); }
+      else if(item.type === '__delete'){ setDeleteMode(); }
+      else if(item.type === '__save'){ openExportModal(); }
+      else if(item.type === '__load'){ openImportModal(); }
+      else if(item.type === '__download'){ downloadArena(); }
+      else if(item.type === '__reset'){
+        if(confirm('Resetar arena para o layout padrão?')){
+          Object.assign(ARENA, JSON.parse(JSON.stringify(ARENA_DEFAULT)));
+          buildArena(); buildZones(); showToast('ARENA RESETADA');
+        }
+      } else if(item.type === '__clear'){
+        if(confirm('Remover TODOS os itens da arena?')){
+          ARENA.props = [];
+          buildArena(); showToast('ARENA LIMPA');
+        }
+      } else {
+        setBrush(item.type, item.variant);
+      }
+    });
+    container.appendChild(btn);
+  }
+  refreshItemButtons();
+}
+
+function refreshItemButtons(){
+  const btns = document.querySelectorAll('.item-btn');
+  btns.forEach(btn => {
+    btn.classList.remove('selected');
+    const b = editorState.activeBrush;
+    if(!b) return;
+    if(b === 'mover' && btn.dataset.type === '__move') btn.classList.add('selected');
+    else if(b === 'delete' && btn.dataset.type === '__delete') btn.classList.add('selected');
+    else if(typeof b === 'object' && btn.dataset.type === b.type && (btn.dataset.variant||'') === (b.variant||'')){
+      btn.classList.add('selected');
+    }
+  });
+}
+
+/* ---- Tabs ---- */
+document.getElementById('editorTabs').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-tab]');
+  if(!btn) return;
+  document.querySelectorAll('#editorTabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEditorItems(btn.dataset.tab);
+});
+
+/* ---- Toggle editor ---- */
+const editorToggle = document.getElementById('editorToggle');
+const editorPanel = document.getElementById('editorPanel');
+let editorOpen = false;
+function setEditorOpen(v){
+  editorOpen = v;
+  editorPanel.classList.toggle('open', v);
+  editorToggle.classList.toggle('on', v);
+  editorToggle.textContent = v ? '✕ FECHAR' : '✎ EDITOR';
+  document.getElementById('titleSub').textContent = v ? 'MODO EDITOR' : 'MODO INSPEÇÃO';
+}
+editorToggle.addEventListener('click', () => setEditorOpen(!editorOpen));
+document.getElementById('editorClose').addEventListener('click', () => setEditorOpen(false));
+
+/* ---- Footer buttons ---- */
+document.getElementById('btnRotate').addEventListener('click', () => {
+  if(editorState.selectedIndex !== null){ rotateSelected(); }
+  else if(editorState.activeBrush && typeof editorState.activeBrush === 'object'){ rotateBrush(45); }
+});
+document.getElementById('btnCancelBrush').addEventListener('click', cancelBrush);
+document.getElementById('btnMoveMode').addEventListener('click', () => {
+  if(editorState.activeBrush === 'mover'){ cancelBrush(); }
+  else { setMoverMode(); }
+});
+
+/* ---- Selected panel buttons ---- */
+document.getElementById('btnSelRotate').addEventListener('click', rotateSelected);
+document.getElementById('btnSelDup').addEventListener('click', duplicateSelected);
+document.getElementById('btnSelDel').addEventListener('click', deleteSelected);
+
+/* ---- View buttons ---- */
+const btnGrid = document.getElementById('btnGrid');
+const btnZones = document.getElementById('btnZones');
+const btnLabels = document.getElementById('btnLabels');
+const btnTop = document.getElementById('btnTop');
+const btnIso = document.getElementById('btnIso');
+btnGrid.addEventListener('click', () => {
+  if(!gridHelper) return;
+  gridHelper.visible = !gridHelper.visible;
+  btnGrid.classList.toggle('on', gridHelper.visible);
+});
+btnZones.addEventListener('click', () => {
+  if(!zoneGroup) return;
+  zoneGroup.visible = !zoneGroup.visible;
+  btnZones.classList.toggle('on', zoneGroup.visible);
+});
+btnLabels.addEventListener('click', () => {
+  labelSprites.forEach(s => s.visible = !s.visible);
+  btnLabels.classList.toggle('on', labelSprites[0]?.visible ?? true);
+});
+btnTop.addEventListener('click', () => {
+  camState.yaw = 0; camState.pitch = 1.44; camState.dist = 60; camState.target.set(0,0,0);
+});
+btnIso.addEventListener('click', () => resetCamera());
+
+/* ---- Zone quick focus ---- */
+ARENA.zones.forEach(zone => {
+  const b = document.createElement('button');
+  b.innerHTML = `<span>${zone.label}</span><span class="role">${zone.role.toUpperCase()}</span>`;
+  b.addEventListener('click', () => {
+    camState.target.set(zone.x, 0, zone.z);
+    camState.dist = Math.max(zone.w, zone.d) * 2.6;
+    camState.pitch = 0.75;
+  });
+  document.getElementById('zoneButtons').appendChild(b);
+});
+
+/* ------------------------------------------------------------------ */
+/* 11. EXPORT / IMPORT                                                 */
+/* ------------------------------------------------------------------ */
+function exportArena(){
+  const data = {
+    id: ARENA.id, name: ARENA.name, version: ARENA.version,
+    size: ARENA.size, grid: ARENA.grid, theme: ARENA.theme,
+    spawns: ARENA.spawns, zones: ARENA.zones, props: ARENA.props
+  };
+  return 'const ARENA = ' + JSON.stringify(data, null, 2) + ';\n';
+}
+
+function downloadArena(){
+  const content = exportArena();
+  const blob = new Blob([content], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'arena-' + ARENA.id + '-' + Date.now() + '.js';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  showToast('ARQUIVO BAIXADO');
+}
+
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modalTitle');
+const modalActions = document.getElementById('modalActions');
+const modalText = document.getElementById('modalText');
+const modalStatus = document.getElementById('modalStatus');
+
+function openModal(){ modal.classList.add('open'); modalStatus.textContent = ''; modalStatus.className = ''; }
+function closeModal(){ modal.classList.remove('open'); }
+document.getElementById('modalClose').addEventListener('click', closeModal);
+
+function openExportModal(){
+  modalTitle.textContent = 'SALVAR ARENA';
+  modalText.value = exportArena();
+  modalText.readOnly = true;
+  modalActions.innerHTML = '';
+  const bCopy = document.createElement('button');
+  bCopy.className = 'primary';
+  bCopy.textContent = '📋 COPIAR';
+  bCopy.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(modalText.value);
+      modalStatus.textContent = '✓ Copiado para área de transferência';
+      modalStatus.className = 'ok';
+    } catch(err){
+      modalText.select();
+      document.execCommand('copy');
+      modalStatus.textContent = '✓ Copiado (fallback)';
+      modalStatus.className = 'ok';
+    }
+  });
+  const bDown = document.createElement('button');
+  bDown.textContent = '⬇ BAIXAR .JS';
+  bDown.addEventListener('click', downloadArena);
+  modalActions.appendChild(bCopy);
+  modalActions.appendChild(bDown);
+  openModal();
+}
+
+function openImportModal(){
+  modalTitle.textContent = 'CARREGAR ARENA';
+  modalText.value = '';
+  modalText.readOnly = false;
+  modalText.placeholder = 'Cole aqui o conteúdo exportado (const ARENA = {...};)';
+  modalActions.innerHTML = '';
+  const bLoad = document.createElement('button');
+  bLoad.className = 'primary';
+  bLoad.textContent = '📂 CARREGAR';
+  bLoad.addEventListener('click', () => {
+    try {
+      let text = modalText.value.trim();
+      if(!text) throw new Error('Campo vazio');
+      if(/^(const|let|var)\s+\w+\s*=/.test(text)){
+        text = text.replace(/^(const|let|var)\s+\w+\s*=\s*/, '').replace(/;\s*$/, '');
+      }
+      const data = JSON.parse(text);
+      if(!data.props || !data.zones) throw new Error('Estrutura inválida');
+      Object.assign(ARENA, data);
+      buildArena(); buildZones();
+      modalStatus.textContent = '✓ Arena carregada';
+      modalStatus.className = 'ok';
+      showToast('ARENA CARREGADA');
+      setTimeout(closeModal, 700);
+    } catch(err){
+      modalStatus.textContent = '✕ Erro: ' + err.message;
+      modalStatus.className = 'err';
+    }
+  });
+  const bFile = document.createElement('button');
+  bFile.textContent = '📁 ARQUIVO';
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file'; fileInput.accept = '.js,.json,.txt'; fileInput.style.display = 'none';
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => { modalText.value = ev.target.result; };
+    reader.readAsText(file);
+  });
+  document.body.appendChild(fileInput);
+  bFile.addEventListener('click', () => fileInput.click());
+  modalActions.appendChild(bLoad);
+  modalActions.appendChild(bFile);
+  openModal();
+}
+
+/* ------------------------------------------------------------------ */
+/* 12. TOAST                                                           */
+/* ------------------------------------------------------------------ */
+let toastTimer = 0;
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+/* ------------------------------------------------------------------ */
+/* 13. INIT + LOOP                                                     */
+/* ------------------------------------------------------------------ */
+let fpsAccum = 0, fpsCount = 0, fpsTimer = 0;
+const fpsEl = document.getElementById('stFps');
+const clock = new THREE.Clock();
+
+function loop(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  keyboardPan(dt);
+  applyCamera();
+  renderer.render(scene, camera);
+  fpsAccum += dt; fpsCount++; fpsTimer += dt;
+  if(fpsTimer > 0.5){
+    fpsEl.textContent = Math.round(fpsCount / fpsAccum);
+    fpsAccum = 0; fpsCount = 0; fpsTimer = 0;
+  }
+}
+
+function init(){
+  buildEnvironment();
+  buildArena();
+  renderEditorItems('terreno');
+  applyCamera();
+  renderer.setAnimationLoop(loop);
+  setTimeout(() => {
+    document.getElementById('loading').classList.add('done');
+    showToast('ARENA PRONTA · TOQUE EM ✎ EDITOR');
+  }, 400);
+}
+init();
+</script>
+</body>
+</html>
